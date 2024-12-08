@@ -1,0 +1,26 @@
+{
+  "device": {
+    "deviceName": "{{ netlab_name }}-{{ hostname }}",
+    "deviceDescription": "Device {{ id }} of type {{ netlab_device_type}} using {{ netlab_provider}} provider.",
+    "deviceSubtype": "router",
+    "sendingIps": [
+      "{{ mgmt.ipv4}}"
+    ],
+    "deviceSampleRate": "{{ KENTIK_SAMPLE_RATE }}",
+    "planId": {{ KENTIK_PLAN_ID }},
+    "siteId": {{ KENTIK_SITE_ID }},
+    "minimizeSnmp": false,
+    "deviceSnmpIp": "{{ mgmt.ipv4}}",
+    "deviceSnmpCommunity": "{{ KENTIK_SNMPV2_COMMUNITY }}",
+    "deviceBgpType": "device",
+    "deviceBgpNeighborIp": "{{ bgp.router_id }}",
+    "deviceBgpNeighborAsn": "{{ bgp.as }}",
+    "nms": {
+      "agentId": "{{ KENTIK_NMS_AGENT_ID }}",
+      "ipAddress": "{{ mgmt.ipv4 }}",
+      "snmp": {
+        "credentialName": "{{ KENTIK_NMS_CREDS_NAME }}",
+      },
+    }
+ }
+}

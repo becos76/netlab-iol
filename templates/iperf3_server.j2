@@ -1,0 +1,3 @@
+{% for test in IPERF3_TESTS %}{% if test.dst == hostname %}
+iperf3 -s -p {{ test.port }} -D
+{% endif %}{% endfor %}

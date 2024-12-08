@@ -1,0 +1,58 @@
+---
+- name: "Kentik Device Onboarding"
+  hosts: core
+  gather_facts: false
+  vars:
+    KENTIK_API_URL: "https://grpc.api.kentik.{{ KENTIK_REGION|lower }}"
+    KENTIK_DEVICE_API: "{{ KENTIK_API_URL }}/device/v202308beta1/device/"
+    KENTIK_HEADERS: 
+          X-CH-Auth-API-Token: "{{ KENTIK_API_TOKEN }}"
+          X-CH-Auth-Email: "{{ KENTIK_API_EMAIL }}"
+          Content-Type: application/json
+  tasks:
+    - name: Get Current Devices
+      uri:
+        url: "{{ KENTIK_DEVICE_API }}"
+        method: GET
+        headers: "{{ KENTIK_HEADERS }}"
+        status_code: 200
+      register: devices    
+      delegate_to: localhost
+      run_once: true
+    
+    - name: Skipped Devices
+      debug:
+        msg: "Device name or IP addresses already existed in portal"
+      when: 
+        - "netlab_name+'-'+hostname in devices.json | json_query('devices[].deviceName')
+          or mgmt.ipv4 in devices.json | json_query('devices[].sendingIps[]')
+          or bgp.router_id in devices.json | json_query('devices[].deviceBgpNeighborIp')"
+      delegate_to: localhost
+
+
+    - name: Create Device OR Skip If Exists
+      block:
+        - name: Create Device Call
+          ansible.builtin.uri:
+            url: "{{ KENTIK_DEVICE_API }}"
+            method: POST
+            headers: "{{ KENTIK_HEADERS }}"
+            status_code: 200
+            body: "{{ lookup('ansible.builtin.template','templates/kentik_device.j2') }}"
+            body_format: json
+            timeout: 60
+          register: device_created
+          throttle: 1
+        - name: Devices Created
+          debug: 
+            msg: "Device created with id: {{ device_created.json.device.id }}"
+      rescue:
+        - name: Cannot Create Device
+          debug:
+            msg: "Failed to create device: {{ device_created.json.message }}"
+      when: 
+        - "netlab_name+'-'+hostname not in devices.json | json_query('devices[].deviceName')"
+        - "mgmt.ipv4 not in devices.json | json_query('devices[].sendingIps[]')"
+        - "bgp.router_id not in devices.json | json_query('devices[].deviceBgpNeighborIp')"
+      delegate_to: localhost
+    

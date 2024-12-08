@@ -1,0 +1,9 @@
+{% if ACTION is not defined or ACTION not in ['run','stop'] %}
+ {{_|mandatory("ACTION is mandatoy - run or stop")}}
+{% elif ACTION == "run" %}
+{% for test in IPERF3_TESTS %}{% if test.src == hostname %}
+iperf3 -c {{ test.dst }} -p {{ test.port}} -t0 -P 5 -b 200K  > iperf-{{ test.dst }}.log &
+{% endif %}{% endfor %}
+{% elif ACTION == "stop" %}
+ps aux | grep 'iperf3 -c' | grep -v grep | awk '{print $2}' | xargs kill -9
+{% endif %}

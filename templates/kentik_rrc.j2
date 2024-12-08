@@ -1,0 +1,37 @@
+!
+ip prefix-list PL_HOSTS seq 5 permit 0.0.0.0/0 ge 32
+ip prefix-list PL_DEFAULT seq 5 permit 0.0.0.0/0 
+!
+route-map RM_KENTIK_IN permit 5
+  match ip address prefix-list PL_HOSTS
+!
+route-map RM_KENTIK_OUT deny 5
+  match ip address prefix-list PL_DEFAULT
+!
+route-map RM_KENTIK_OUT permit 10
+ set community {{ bgp.as }}:{{ id*100 }} additive
+ set extcommunity color {{ id+10 }} additive
+!
+route-map RM_IBGP_OUT permit 5
+ set community {{ bgp.as }}:{{ id*100 }} additive
+ set extcommunity color {{ id+10 }} additive
+!
+router bgp {{ bgp.as }}
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} remote-as {{ bgp.as }}
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} description KENTIK
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} update-source {{ loopback.ifname }}
+!
+address-family ipv4
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} activate
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} route-reflector-client
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} route-map RM_KENTIK_IN in
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} route-map RM_KENTIK_OUT out
+{% for nei in bgp.neighbors if nei.type == 'ibgp' %}
+    neighbor {{ nei.ipv4 }} route-map RM_IBGP_OUT out
+{% endfor %}
+!
+address-family vpnv4
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} activate
+    neighbor {{ hosts['kbgp']['ipv4'][0] }} route-reflector-client
+!
+

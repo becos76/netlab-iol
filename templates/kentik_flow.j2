@@ -1,0 +1,39 @@
+{% if ACTION is not defined or ACTION not in ['push','remove'] %}
+{{_|mandatory("ACTION is mandatoy - push or remove")}}
+{% elif ACTION == "remove" %}
+!
+interface range {% for interface in netlab_interfaces if interface.type != 'loopback' -%}
+{{ interface.ifname + " , " if not loop.last else interface.ifname }}{% endfor %}  
+  no flow-sampler KENTIK
+ !
+!
+no ip flow-export source Ethernet0/0
+no ip flow-export version 9 origin-as bgp-nexthop
+no ip flow-export template options sampler
+no ip flow-export template timeout-rate
+no ip flow-export template refresh-rate
+no ip flow-export destination {{ hostvars['kproxy']['mgmt']['ipv4'] }} 9995 vrf clab-mgmt
+no flow-sampler-map KENTIK
+no ip flow-cache timeout inactive
+no ip flow-cache timeout active
+!
+{% elif ACTION == "push" %}
+!
+ip flow-cache timeout inactive 30
+ip flow-cache timeout active 1
+!
+flow-sampler-map KENTIK
+ mode random one-out-of {{ KENTIK_SAMPLE_RATE }}
+!
+ip flow-export source Ethernet0/0
+ip flow-export version 9 origin-as bgp-nexthop
+ip flow-export template options sampler
+ip flow-export template timeout-rate 1
+ip flow-export template refresh-rate 50
+ip flow-export destination {{ hostvars['kproxy']['mgmt']['ipv4'] }} 9995 vrf clab-mgmt
+!
+interface range {% for interface in netlab_interfaces if interface.type != 'loopback' -%}
+{{ interface.ifname + " , " if not loop.last else interface.ifname }}{% endfor %}  
+  flow-sampler KENTIK
+!
+{% endif %}

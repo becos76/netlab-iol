@@ -1,0 +1,144 @@
+provider: clab
+defaults:
+  groups._auto_create: True
+  device: iol
+  devices.iol.clab.image: vrnetlab/cisco_iol:17.12.1
+  devices.ioll2.clab.image: vrnetlab/cisco_iol:L2-17.12.1
+  devices.linux.clab.image: ghcr.io/srl-labs/network-multitool
+  providers.clab.lab_prefix: ""
+  paths.append.custom.dirs: [ templates ]
+  vrf.as: 65515
+groups:
+  core:
+    members: [ rc1, rc2, rc3, rc4 ]
+    module: [ ospf, bgp, mpls, vrf ]
+    bgp.as: 65515
+    mpls.vpn: [ ibgp ]
+    vrf.loopback: true
+    config: [ core_extras, kentik_rrc ]
+    vars:
+      KENTIK_SNMPV2_COMMUNITY: < SNMPv2 community >
+      KENTIK_SAMPLE_RATE: < Netflow Sampling Rate >
+      KENTIK_REGION: < Kentik Cluster Region - US or EU >
+      KENTIK_PLAN_ID: < Kentik Plan ID >
+      KENTIK_SITE_ID: < Kentik Site ID >
+      KENTIK_NMS_AGENT_ID: < Kentik NMS Agent ID >
+      KENTIK_NMS_CREDS_NAME: < Kentik Creds Vault Name >
+      KENTIK_API_TOKEN: < Kentik User API Token >
+      KENTIK_API_EMAIL: < Kentik User Email >
+  ces:
+    members: [ ce1, ce2, ce3, ce4 ]
+    module: [ bgp ]
+  pcs:
+    members: [ pc1, pc2, pc3, pc4, pc11, pc12, pc13, pc14 ]
+    device: linux
+    config: [ iperf3_server ]
+    vars:
+      IPERF3_TESTS: [
+                { "src":"pc1", "dst": "pc4", "port": "5201" },
+                { "src":"pc2", "dst": "pc1", "port": "5201" },
+                { "src":"pc3", "dst": "pc2", "port": "5201" },
+                { "src":"pc4", "dst": "pc3", "port": "5201" },
+                { "src":"pc1", "dst": "pc3", "port": "5202" },
+                { "src":"pc2", "dst": "pc4", "port": "5202" },
+                { "src":"pc11", "dst": "pc14", "port": "5201" },
+                { "src":"pc14", "dst": "pc11", "port": "5201" },
+                { "src":"pc12", "dst": "pc13", "port": "5201" },
+                { "src":"pc13", "dst": "pc12", "port": "5201" },
+      ]        
+  ksynth:
+    members: [ ksynth1, ksynth2, ksynth3, ksynth4 ]      
+    device: linux
+    clab:
+      image: kentik/ksynth-agent:latest
+  kentik:
+    members: [ kproxy, kbgp, ksynth1, ksynth2, ksynth3, ksynth4 ]
+    clab:
+      env:
+        KENTIK_COMPANY: < Kentik Company ID >
+        KENTIK_REGION: < Kentik Cluster Region - US or EU >
+        KENTIK_API_TOKEN: < Kentik User API Token >
+        KENTIK_API_EMAIL: < Kentik User Email >
+vrfs:
+  blue:
+    rd: '65515:101'
+nodes: 
+  rc1:
+  rc2:
+    vrfs:
+      red:
+       rd: "10.0.0.2:102"
+       import: '65515:102'
+       export: '65515:102'
+  rc3:
+    vrfs:
+      red:
+       rd: "10.0.0.3:102"
+       import: '65515:102'
+       export: '65515:102'
+  rc4:
+  ce1:
+    id: 11
+    bgp.as: 65101
+  ce2:
+    id: 12
+    bgp.as: 65201
+  ce3:
+    id: 13
+    bgp.as: 65202
+  ce4:
+    id: 14
+    bgp.as: 65102
+  kproxy:
+    device: linux
+    clab:
+      image: kentik/kproxy:latest
+      cmd: >-
+           -api_email=< Kentik kproxy agent email address >
+           -region=< Kentik Cluster Region - US or EU >
+           -healthcheck=0.0.0.0 
+           -dns internal:192.168.121.101:53
+  ksynth1:
+    clab.binds:
+      - mounts/ksynth1:/var/lib/ksynth-agent
+  ksynth2:
+    clab.binds:
+      - mounts/ksynth2:/var/lib/ksynth-agent
+  ksynth3:
+    clab.binds:
+      - mounts/ksynth3:/var/lib/ksynth-agent
+  ksynth4:
+    clab.binds:
+      - mounts/ksynth4:/var/lib/ksynth-agent
+  kbgp:
+    device: linux
+    clab:
+      image: kentik/kbgp:latest
+      env:
+        KENTIK_REGION: fra1
+links:
+  - rc1-rc2
+  - rc1-rc3
+  - rc2-rc4
+  - rc3-rc4
+  - rc1-pc1
+  - rc2-pc2
+  - rc3-pc3
+  - rc4-pc4
+  - rc1-ksynth1
+  - rc2-ksynth2
+  - rc3-ksynth3
+  - rc4-ksynth4
+  - rc1-kbgp
+  - rc1: { vrf: blue }
+    ce1: 
+  - rc2: { vrf: red }
+    ce2:
+  - rc3: { vrf: red }
+    ce3:
+  - rc4: { vrf: blue }
+    ce4:
+  - ce1-pc11
+  - ce2-pc12
+  - ce3-pc13
+  - ce4-pc14

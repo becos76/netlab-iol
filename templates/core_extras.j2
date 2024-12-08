@@ -1,0 +1,10 @@
+{# Enable DNS server in both GRT and mgmt vrf#}
+! 
+ip dns server
+ip dns view vrf clab-mgmt
+!
+{# Enable SNMP #}
+!
+snmp-server ifindex persist
+snmp-server community {{ KENTIK_SNMPV2_COMMUNITY }}
+!
