@@ -1,0 +1,18 @@
+services:
+  kagent:
+    container_name: kagent
+    hostname: iol_kagent
+    image: kentik/kagent:latest
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      K_COMPANY_ID: < Kentik Company ID >
+      K_API_ROOT: grpc.api.kentik.eu:443
+    cap_add:
+      - NET_RAW
+    volumes:
+      - kagent-data:/opt/kentik
+
+volumes:
+  kagent-data:
+    driver: local
